@@ -79,6 +79,9 @@ class Owner:
 class Scheduler:
     """Generates and manages a daily care schedule based on priority and available time."""
 
+    # Define time of day order for sorting
+    TIME_ORDER = {"morning": 0, "afternoon": 1, "evening": 2, None: 3}
+
     def __init__(self, owner: Owner):
         """Initialize the scheduler with an owner whose pets and tasks will be scheduled."""
         self.owner = owner
@@ -92,6 +95,34 @@ class Scheduler:
         """Return tasks sorted from highest to lowest priority."""
         return sorted(self.tasks, key=lambda t: t.priority, reverse=True)
 
+    def sort_by_time(self) -> List[Task]:
+        """Return tasks sorted by time of day: morning → afternoon → evening."""
+        return sorted(
+            self.tasks,
+            key=lambda t: self.TIME_ORDER.get(t.time_of_day, 3)
+        )
+
+    def filter_by_pet(self, pet_name: str) -> List[Task]:
+        """Return only tasks belonging to the pet with the given name."""
+        for pet in self.owner.get_pets():
+            if pet.name.lower() == pet_name.lower():
+                return pet.get_tasks()
+        return []
+
+    def filter_incomplete(self) -> List[Task]:
+        """Return only tasks that have not been completed yet."""
+        return [t for t in self.tasks if not t.completed]
+
+    def filter_by_category(self, category: str) -> List[Task]:
+        """Return only tasks matching the given category (e.g. 'walk', 'meds')."""
+        return [t for t in self.tasks if t.category.lower() == category.lower()]
+
+    def reset_recurring(self) -> None:
+        """Reset completion status for all recurring tasks (call at start of new day)."""
+        for task in self.tasks:
+            if task.is_recurring:
+                task.completed = False
+
     def detect_conflicts(self) -> List[str]:
         """Flag if total task duration exceeds the owner's available time."""
         conflicts = []
@@ -101,6 +132,19 @@ class Scheduler:
                 f"Total tasks ({total} min) exceed available time "
                 f"({self.owner.available_minutes} min)."
             )
+
+        # Check for time slots that are overloaded
+        slot_totals = {"morning": 0, "afternoon": 0, "evening": 0}
+        for task in self.tasks:
+            if task.time_of_day in slot_totals:
+                slot_totals[task.time_of_day] += task.duration_minutes
+
+        slot_limits = {"morning": 120, "afternoon": 120, "evening": 120}
+        for slot, total in slot_totals.items():
+            if total > slot_limits[slot]:
+                conflicts.append(
+                    f"Too many tasks in the {slot} slot ({total} min)."
+                )
         return conflicts
 
     def get_total_duration(self) -> int:
@@ -108,9 +152,13 @@ class Scheduler:
         return sum(t.duration_minutes for t in self.tasks)
 
     def generate_schedule(self) -> List[Task]:
-        """Build a daily plan by fitting highest-priority tasks into available time."""
+        """Build a daily plan sorted by time of day, fitting tasks into available time."""
         self.load_tasks()
-        sorted_tasks = self.sort_by_priority()
+        # Sort by time of day first, then by priority within each slot
+        sorted_tasks = sorted(
+            self.tasks,
+            key=lambda t: (self.TIME_ORDER.get(t.time_of_day, 3), -t.priority)
+        )
         schedule = []
         time_used = 0
 
