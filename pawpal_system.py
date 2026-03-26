@@ -193,21 +193,47 @@ class Scheduler:
                 task.completed = False
 
     def detect_conflicts(self) -> List[str]:
-        """Flag if total task duration exceeds the owner's available time."""
+        """
+        Detect scheduling conflicts including:
+        - Total time exceeding available minutes
+        - A single time slot exceeding 60 minutes
+        - Duplicate tasks scheduled in the same slot
+        Returns a list of warning strings (never crashes).
+        """
         conflicts = []
+
+        # 1. Total time conflict
         total = self.get_total_duration()
         if total > self.owner.available_minutes:
             conflicts.append(
-                f"Total tasks ({total} min) exceed available time "
+                f"⚠️  Total tasks ({total} min) exceed available time "
                 f"({self.owner.available_minutes} min)."
             )
-        slot_totals = {"morning": 0, "afternoon": 0, "evening": 0}
+
+        # 2. Per-slot overload (over 60 min in one slot is too much)
+        slot_totals: dict = {"morning": 0, "afternoon": 0, "evening": 0}
         for task in self.tasks:
             if task.time_of_day in slot_totals:
                 slot_totals[task.time_of_day] += task.duration_minutes
-        for slot, total in slot_totals.items():
-            if total > 120:
-                conflicts.append(f"Too many tasks in the {slot} slot ({total} min).")
+        for slot, slot_total in slot_totals.items():
+            if slot_total > 60:
+                conflicts.append(
+                    f"⚠️  '{slot}' slot is overloaded ({slot_total} min). "
+                    f"Consider moving some tasks."
+                )
+
+        # 3. Duplicate task titles in the same time slot
+        seen: dict = {}  # {(title, time_of_day): count}
+        for task in self.tasks:
+            key = (task.title.lower(), task.time_of_day)
+            seen[key] = seen.get(key, 0) + 1
+        for (title, slot), count in seen.items():
+            if count > 1:
+                conflicts.append(
+                    f"⚠️  '{title}' appears {count} times in the "
+                    f"'{slot}' slot — possible duplicate."
+                )
+
         return conflicts
 
     def get_total_duration(self) -> int:

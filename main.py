@@ -1,56 +1,33 @@
 from datetime import date
 from pawpal_system import Owner, Pet, Task, Scheduler
 
-owner = Owner(name="Sasha", available_minutes=120)
+# Only 40 minutes available — intentionally tight
+owner = Owner(name="Sasha", available_minutes=40)
 dog   = Pet(name="Buddy", species="Dog", age=3)
 
-# Daily recurring task
-dog.add_task(Task(
-    title="Morning Walk",
-    duration_minutes=30,
-    priority=5,
-    category="walk",
-    is_recurring=True,
-    frequency="daily",
-    time_of_day="morning",
-    due_date=date.today()
-))
-
-# Weekly recurring task
-dog.add_task(Task(
-    title="Bath Time",
-    duration_minutes=20,
-    priority=3,
-    category="grooming",
-    is_recurring=True,
-    frequency="weekly",
-    time_of_day="afternoon",
-    due_date=date.today()
-))
-
-# One-time task
-dog.add_task(Task(
-    title="Vet Appointment",
-    duration_minutes=60,
-    priority=5,
-    category="meds",
-    is_recurring=False,
-    frequency="none",
-    time_of_day="afternoon",
-    due_date=date.today()
-))
+# Two tasks in the same morning slot (will overload it)
+dog.add_task(Task("Morning Walk",    30, priority=5, category="walk",
+                  time_of_day="morning", frequency="daily", due_date=date.today()))
+dog.add_task(Task("Breakfast",       20, priority=5, category="feeding",
+                  time_of_day="morning", frequency="daily", due_date=date.today()))
+dog.add_task(Task("Morning Walk",    30, priority=5, category="walk",
+                  time_of_day="morning", frequency="daily", due_date=date.today()))  # duplicate!
+dog.add_task(Task("Flea Medicine",   10, priority=3, category="meds",
+                  time_of_day="afternoon", due_date=date.today()))
 
 owner.add_pet(dog)
 
-print("── Before completing tasks ──")
-for t in dog.get_tasks():
-    print(f"  {t}")
+scheduler = Scheduler(owner)
+scheduler.load_tasks()
 
-print("\n── Completing tasks ──")
-dog.complete_task("Morning Walk")   # daily → next due tomorrow
-dog.complete_task("Bath Time")      # weekly → next due in 7 days
-dog.complete_task("Vet Appointment") # one-time → no new task
+print("── Conflict Detection Report ──")
+conflicts = scheduler.detect_conflicts()
 
-print("\n── All tasks after completion ──")
-for t in dog.get_tasks():
-    print(f"  {t}")
+if conflicts:
+    for c in conflicts:
+        print(f"  {c}")
+else:
+    print("  No conflicts found!")
+
+print()
+scheduler.print_schedule()
