@@ -1,58 +1,56 @@
+from datetime import date
 from pawpal_system import Owner, Pet, Task, Scheduler
 
-# ── Setup ────────────────────────────────────────────────────────────────────
 owner = Owner(name="Sasha", available_minutes=120)
+dog   = Pet(name="Buddy", species="Dog", age=3)
 
-dog = Pet(name="Buddy", species="Dog", age=3)
-cat = Pet(name="Luna", species="Cat", age=5)
+# Daily recurring task
+dog.add_task(Task(
+    title="Morning Walk",
+    duration_minutes=30,
+    priority=5,
+    category="walk",
+    is_recurring=True,
+    frequency="daily",
+    time_of_day="morning",
+    due_date=date.today()
+))
 
-# Add tasks OUT OF ORDER to test sorting
-dog.add_task(Task("Evening Walk",    30, priority=4, category="walk",    time_of_day="evening",   is_recurring=True))
-dog.add_task(Task("Flea Medicine",    5, priority=3, category="meds",    time_of_day="afternoon", is_recurring=False))
-dog.add_task(Task("Morning Walk",    30, priority=5, category="walk",    time_of_day="morning",   is_recurring=True))
-dog.add_task(Task("Breakfast",       10, priority=5, category="feeding", time_of_day="morning",   is_recurring=True))
+# Weekly recurring task
+dog.add_task(Task(
+    title="Bath Time",
+    duration_minutes=20,
+    priority=3,
+    category="grooming",
+    is_recurring=True,
+    frequency="weekly",
+    time_of_day="afternoon",
+    due_date=date.today()
+))
 
-cat.add_task(Task("Dinner Feeding",  10, priority=4, category="feeding", time_of_day="evening",   is_recurring=True))
-cat.add_task(Task("Brush Fur",       15, priority=2, category="grooming",time_of_day="afternoon", is_recurring=False))
-cat.add_task(Task("Afternoon Nap",    5, priority=1, category="enrichment", time_of_day="afternoon", is_recurring=True))
+# One-time task
+dog.add_task(Task(
+    title="Vet Appointment",
+    duration_minutes=60,
+    priority=5,
+    category="meds",
+    is_recurring=False,
+    frequency="none",
+    time_of_day="afternoon",
+    due_date=date.today()
+))
 
 owner.add_pet(dog)
-owner.add_pet(cat)
 
-scheduler = Scheduler(owner)
-scheduler.load_tasks()
+print("── Before completing tasks ──")
+for t in dog.get_tasks():
+    print(f"  {t}")
 
-# ── Test 1: Sort by Time of Day ──────────────────────────────────────────────
-print("\n🕐 Tasks sorted by time of day:")
-for task in scheduler.sort_by_time():
-    print(f"  {task}")
+print("\n── Completing tasks ──")
+dog.complete_task("Morning Walk")   # daily → next due tomorrow
+dog.complete_task("Bath Time")      # weekly → next due in 7 days
+dog.complete_task("Vet Appointment") # one-time → no new task
 
-# ── Test 2: Sort by Priority ─────────────────────────────────────────────────
-print("\n⭐ Tasks sorted by priority:")
-for task in scheduler.sort_by_priority():
-    print(f"  {task}")
-
-# ── Test 3: Filter by Pet ────────────────────────────────────────────────────
-print("\n🐶 Buddy's tasks only:")
-for task in scheduler.filter_by_pet("Buddy"):
-    print(f"  {task}")
-
-print("\n🐱 Luna's tasks only:")
-for task in scheduler.filter_by_pet("Luna"):
-    print(f"  {task}")
-
-# ── Test 4: Filter Incomplete ────────────────────────────────────────────────
-# Mark one task complete first
-scheduler.tasks[0].mark_complete()
-print("\n⬜ Incomplete tasks only:")
-for task in scheduler.filter_incomplete():
-    print(f"  {task}")
-
-# ── Test 5: Recurring Reset ──────────────────────────────────────────────────
-print("\n🔄 After resetting recurring tasks:")
-scheduler.reset_recurring()
-for task in scheduler.tasks:
-    print(f"  {task}")
-
-# ── Test 6: Full Schedule ────────────────────────────────────────────────────
-scheduler.print_schedule()
+print("\n── All tasks after completion ──")
+for t in dog.get_tasks():
+    print(f"  {t}")
