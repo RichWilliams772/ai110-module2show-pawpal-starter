@@ -55,4 +55,21 @@ PawPal+ includes an algorithmic scheduling layer with the following features:
   their next occurrence using Python's `timedelta` when marked complete.
 - **Conflict Detection**: The scheduler warns if total task time exceeds
   available time, a single time slot is overloaded, or duplicate tasks
-  are detected — without crashing the program.
+  are detected — without crashing the program.## Testing PawPal+
+
+Run the test suite with:
+```
+python -m pytest
+```
+
+Tests cover:
+- Task completion and status changes
+- Pet task addition
+- Sorting by time and priority
+- Daily and weekly recurring task logic
+- Conflict detection (time exceeded, duplicates)
+- Edge cases: empty schedules, filtering incomplete tasks
+
+**Confidence Level: ⭐⭐⭐⭐ (4/5)**
+Core scheduling behaviors are well tested. Time-slot overlap
+detection could be more precise in a future version.
